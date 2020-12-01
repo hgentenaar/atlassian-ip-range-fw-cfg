@@ -5,13 +5,13 @@ A bash script to generate a firewalld zone xml file from the published Atlassian
 
 ## Usage
 Main script:
-Place atlassian-ip-range-fw-cfg in /usr/local/sbin
+Place [atlassian-ip-range-fw-cfg](Atlassian-ip-range-fw-cfg) in /usr/local/sbin
 make executable
 `sudo chmod +x /usr/local/sbin/atlassian-ip-range-fw-cfg
 
 
 ## systemd timer setup
-Place atlassian-ip-range-fw-cfg.servcie and atlassian-ip-range-fw-cfg.timer in /etc/systemd/system 
+Place [atlassian-ip-range-fw-cfg.service](systemd/atlassian-ip-range-fw-cfg.service) and [atlassian-ip-range-fw-cfg.timer](systemd/atlassian-ip-range-fw-cfg.timer) in /etc/systemd/system 
 
 ### check systemd setup
 `sudo systemd-analyze verify /etc/systemd/system/atlassian-ip-range-fw-cfg*`
