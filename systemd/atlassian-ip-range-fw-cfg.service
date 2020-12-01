@@ -1,0 +1,6 @@
+[Unit]
+Description=Update Atlassian IP Range fw cfg
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/atlassian-ip-range-fw-cfg
