@@ -1,0 +1,77 @@
+!/bin/bash
+##########################################################################
+# Name:
+#  - Atlassian IP Range Firewalld configurator
+#
+# Version:
+# - v 1.0
+#
+# https://github.com/hgentenaar/atlassian-ip-range-fw-cfg/
+#########################
+# Description:
+#
+#  Generates a firewalld zone xml configuration providing access to ssh from bitbucket pipelines, and reloads firewalld.
+#
+##################
+# Recomended location: /usr/local/sbin/atlassian-ip-range-fw-cfg
+#
+# File interactions:
+# - /tmp/atlassian-ip-ranges.txt
+# - /tmp/atlassian-ip-ranges-clean.txt
+# - /etc/firewalld/zones/bitbucket.xm
+#
+# System interactions:
+# - firewalld
+#
+#############################
+
+############  setup  ################
+#  Exit on error. 
+set -o errexit
+# Exit on error inside any functions or subshells.
+set -o errtrace
+# Do not allow use of undefined vars. 
+set -o nounset
+# Catch the error in pipes
+set -o pipefail
+
+
+
+
+
+############ MAIN ####################
+
+# fetch IP-ranges list
+# https://ip-ranges.atlassian.com
+wget https://ip-ranges.atlassian.com -O /tmp/atlassian-ip-ranges.txt
+
+
+# create clean file with just the ip ranges
+grep cidr /tmp/atlassian-ip-ranges.txt | awk -F\" '{print $4}' >  /tmp/atlassian-ip-ranges-clean.txt
+
+
+# check sync token
+# ToDo:
+# Note sync token or modification date and exit if there are no changes to the ip-list
+
+# create empty zone xml file
+tee /etc/firewalld/zones/bitbucket.xml <<'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<zone target="ACCEPT">
+  <short>Trusted</short>
+  <description>All SSH connections from BitBucket are accepted.</description>
+  <service name="ssh"/>
+</zone>
+EOF
+
+# add ip addresses from the cleaned list
+while read in;
+do  sed -i '/description/a  \<source address=\"'"$in"'\"\/\>' /etc/firewalld/zones/bitbucket.xml;
+done < /tmp/atlassian-ip-ranges-clean.txt
+
+#reload firewall
+systemctl reload firewalld
+
+
+# thats it
+exit 0
