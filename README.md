@@ -5,7 +5,7 @@ A bash script to generate a firewalld zone xml file from the published Atlassian
 
 ## Usage
 Main script:
-Place [atlassian-ip-range-fw-cfg](Atlassian-ip-range-fw-cfg) in /usr/local/sbin
+Place [atlassian-ip-range-fw-cfg](atlassian-ip-range-fw-cfg) in /usr/local/sbin
 make executable
 `sudo chmod +x /usr/local/sbin/atlassian-ip-range-fw-cfg
 
