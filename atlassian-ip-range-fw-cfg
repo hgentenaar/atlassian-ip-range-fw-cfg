@@ -1,61 +1,30 @@
-#!/bin/sh -
-##########################################################################
-# Name:
-#  - Atlassian IP Range Firewalld configurator
-#
-# Version:
-# - v 1.0
-#
-# https://github.com/hgentenaar/atlassian-ip-range-fw-cfg/
-#########################
-# Description:
-#
-#  Generates a firewalld zone xml configuration providing access to ssh from bitbucket pipelines, and reloads firewalld.
-#
-##################
-# Recomended location: /usr/local/sbin/atlassian-ip-range-fw-cfg
-#
-# File interactions:
-# - /tmp/atlassian-ip-ranges.txt
-# - /tmp/atlassian-ip-ranges-clean.txt
-# - /etc/firewalld/zones/bitbucket.xm
-#
-# System interactions:
-# - firewalld
-#
-#############################
+#!/bin/sh
 
-############  setup  ################
-#  Exit on error. 
-set -o errexit
-# Exit on error inside any functions or subshells.
-set -o errtrace
-# Do not allow use of undefined vars. 
-set -o nounset
-# Catch the error in pipes
-set -o pipefail
+### BEGIN INIT INFO
+# Provides:          atlassian-ip-range-fw-cfg
+# Required-Start:    $network $remote_fs $syslog
+# Required-Stop:     $network $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Atlassian IP Range Firewalld configurator
+# Description:       Generates a firewalld zone xml configuration providing access to ssh from bitbucket pipelines, and reloads firewalld.
+### END INIT INFO
 
+set -e
+set -u
 
+# Prints an error message and exits the script with a non-zero exit code.
+error_exit() {
+  echo "Error: $1" >&2
+  exit 1
+}
 
-
-
-############ MAIN ####################
-
-# fetch IP-ranges list
-# https://ip-ranges.atlassian.com
-wget https://ip-ranges.atlassian.com -O /tmp/atlassian-ip-ranges.txt
-
-
-# create clean file with just the ip ranges
-grep cidr /tmp/atlassian-ip-ranges.txt | awk -F\" '{print $4}' >  /tmp/atlassian-ip-ranges-clean.txt
-
-
-# check sync token
-# ToDo:
-# Note sync token or modification date and exit if there are no changes to the ip-list
+# Fetch the JSON file containing the IP ranges for Atlassian products
+JSON_FILE=$(mktemp)
+curl -s -f https://ip-ranges.atlassian.com > "$JSON_FILE" || error_exit "Failed to fetch IP ranges from Atlassian server"
 
 # create empty zone xml file
-tee /etc/firewalld/zones/bitbucket.xml <<'EOF'
+cat << EOF > /etc/firewalld/zones/bitbucket.xml
 <?xml version="1.0" encoding="utf-8"?>
 <zone target="ACCEPT">
   <short>Trusted</short>
@@ -64,14 +33,19 @@ tee /etc/firewalld/zones/bitbucket.xml <<'EOF'
 </zone>
 EOF
 
-# add ip addresses from the cleaned list
-while read in;
-do  sed -i '/description/a  \<source address=\"'"$in"'\"\/\>' /etc/firewalld/zones/bitbucket.xml;
-done < /tmp/atlassian-ip-ranges-clean.txt
+# Extract the IP addresses for Bitbucket from the JSON file
+IP_ADDRESSES=$(grep "cidr" "$JSON_FILE" | awk -F\" '{print $4}')
 
-#reload firewall
+# Add ip addresses to the bitbucket.xml zone file
+for IP_ADDRESS in $IP_ADDRESSES
+do
+sed -i '/description/a  \<source address=\"'"$IP_ADDRESS"'\"\/\>' /etc/firewalld/zones/bitbucket.xml;
+done
+
+# reload firewall
 systemctl reload firewalld
 
+# Clean up
+rm "$JSON_FILE"
 
-# thats it
 exit 0
